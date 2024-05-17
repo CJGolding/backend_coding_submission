@@ -31,25 +31,29 @@ class DataProcessor:
             product (pd.DataFrame): The processed product data.
             brand (pd.DataFrame): The processed brand data.
         """
-        product, brand = self._convert_date_to_string(product), self._convert_date_to_string(brand)
+        product, brand = (self._convert_date_to_string(product, 'current_week_commencing_date'),
+                          self._convert_date_to_string(brand, 'current_week_commencing_date'))
         dict_product = product.sort_values(['product_name', 'current_week_commencing_date']).to_dict(orient='records')
         dict_brand = brand.sort_values(['brand_name', 'current_week_commencing_date']).to_dict(orient='records')
         dict_combined = {'PRODUCT': dict_product, 'BRAND': dict_brand}
         with open('C:/Users/goldi/backend-coding-challenge/output/results.json', 'w') as results_json:
             simplejson.dump(dict_combined, results_json, indent=4, ignore_nan=True)
 
-    def _convert_date_to_string(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _convert_date_to_string(self, df: pd.DataFrame, current_format: str) -> pd.DataFrame:
         """
         Converts date columns in the DataFrame to string format, readable in a JSON file.
 
         Parameters:
             df (pd.DataFrame): The DataFrame containing date columns.
+            current_format(str): The name format of the first date column ('current_week_commencing_date' or
+            'week_commencing_date')
 
         Returns:
             pd.DataFrame: The DataFrame with date columns converted to string format.
         """
-        df['current_week_commencing_date'] = df['current_week_commencing_date'].dt.strftime('%d/%m/%Y')
-        df['previous_week_commencing_date'] = df['previous_week_commencing_date'].dt.strftime('%d/%m/%Y')
+        df[current_format] = df[current_format].dt.strftime('%d/%m/%Y')
+        if 'previous_week_commencing_date' in df.columns:
+            df['previous_week_commencing_date'] = df['previous_week_commencing_date'].dt.strftime('%d/%m/%Y')
         return df
 
     def process_data(self) -> tuple:
@@ -147,22 +151,13 @@ class DataProcessor:
                        axis=1).reindex(columns=specific_order + generic_order)
 
 
-def run():
+def run(prod_path='../data/sales_product.csv', brand_path='../data/sales_brand.csv'):
     """
     Runs the data processing and produces an output file in the output/ directory.
     """
-
-    prod_path = 'C:/Users/goldi/backend-coding-challenge/data/sales_product.csv'
-    brand_path = 'C:/Users/goldi/backend-coding-challenge/data/sales_brand.csv'
-
     data_processor = DataProcessor(prod_path, brand_path)
     df_product, df_brand = data_processor.process_data()
-    print(df_product.dtypes)
     data_processor.df_to_json(df_product, df_brand)
-
-    print(df_product.to_string())
-    print(df_brand.to_string())
-
 
 
 if __name__ == "__main__":
