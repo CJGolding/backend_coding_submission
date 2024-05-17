@@ -1,0 +1,21 @@
+period_id,period_name,week_commencing_date,brand_id,brand,gross_sales,units_sold
+1,previous,04/07/2021,1,Brand A,230.34,15
+1,previous,11/07/2021,1,Brand A,490.85,33
+1,previous,18/07/2021,1,Brand A,410.08,40
+1,previous,25/07/2021,1,Brand A,314.31,38
+2,current,04/07/2022,1,Brand A,46.63,34
+2,current,11/07/2022,1,Brand A,384.83,49
+2,current,18/07/2022,1,Brand A,225.34,50
+2,current,25/07/2022,1,Brand A,303.78,26
+1,previous,04/07/2021,2,Brand B,87.91,17
+1,previous,11/07/2021,2,Brand B,192.41,45
+1,previous,18/07/2021,2,Brand B,143.28,17
+1,previous,25/07/2021,2,Brand B,483.18,32
+2,current,04/07/2022,2,Brand B,248.64,28
+2,current,18/07/2022,2,Brand B,143.28,17
+2,current,25/07/2022,2,Brand B,296.35,22
+1,previous,25/07/2021,3,Brand C,212,38
+2,current,04/07/2022,3,Brand C,37.08,48
+2,current,11/07/2022,3,Brand C,311.11,20
+2,current,18/07/2022,3,Brand C,226.43,48
+2,current,25/07/2022,3,Brand C,472.92,11
