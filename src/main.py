@@ -45,7 +45,7 @@ class DataProcessor:
 
         Parameters:
             df (pd.DataFrame): The DataFrame containing date columns.
-            current_format(str): The name format of the first date column ('current_week_commencing_date' or
+            current_format(str): The name format of the first date column (accepts'current_week_commencing_date' or
             'week_commencing_date')
 
         Returns:
