@@ -35,8 +35,7 @@ def test_df_to_json(data_processor):
     """
     product_df = pd.read_csv(product_test_path, parse_dates=['week_commencing_date'], dayfirst=True)
     brand_df = pd.read_csv(brand_test_path, parse_dates=['week_commencing_date'], dayfirst=True)
-    product_df = data_processor._convert_date_to_string(product_df)
-    brand_df = data_processor._convert_date_to_string(brand_df)
+    product_df, brand_df = data_processor.process_data()
 
     data_processor.df_to_json(product_df, brand_df)
 
@@ -56,9 +55,8 @@ def test_convert_date_to_string(data_processor):
         data_processor (DataProcessor): Fixture for DataProcessor instance.
     """
     df = pd.read_csv(product_test_path, parse_dates=['week_commencing_date'], dayfirst=True)
-    df = data_processor._convert_date_to_string(df)
-    assert df['current_week_commencing_date'].iloc[0] == '01/01/2022'
-    assert df['previous_week_commencing_date'].iloc[0] == '01/01/2021'
+    df = data_processor._convert_date_to_string(df, 'week_commencing_date')
+    assert df['week_commencing_date'].iloc[0] == '04/07/2021'
 
 
 def test_prepare_data(data_processor):
@@ -91,8 +89,8 @@ def test_calc_growth(data_processor):
     df = data_processor._calc_growth(df)
     assert 'perc_gross_sales_growth' in df.columns
     assert 'perc_unit_sales_growth' in df.columns
-    assert df['perc_gross_sales_growth'].iloc[0] == pytest.approx(11.11, 0.1)
-    assert df['perc_unit_sales_growth'].iloc[0] == pytest.approx(11.11, 0.1)
+    assert df['perc_gross_sales_growth'].iloc[0] == pytest.approx(108.81)
+    assert df['perc_unit_sales_growth'].iloc[0] == pytest.approx(123.08)
 
 
 def test_drop_columns_and_reorder(data_processor):
@@ -151,7 +149,7 @@ def test_run():
     # Ensure output directory exists
     os.makedirs('output', exist_ok=True)
 
-    run()
+    run(product_test_path, brand_test_path)
 
     # Check if output file is created
     assert os.path.exists(output_path)
