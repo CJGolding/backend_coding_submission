@@ -19,21 +19,23 @@ class DataProcessor:
         Parameters:
             path (str): Path to the data CSV file.
         """
-        self.data_path = path
-        self.data_frame = None
-        self.column_data_types = None
-        self.data_specific_attributes = None
-        self.default_columns = ['period_id', 'period_name']
-        self.columns_to_drop = self.default_columns + ['gross_sales', 'units_sold', 'prev_gross_sales', 'prev_units_sold']
-        self.new_column_order = ['current_week_commencing_date', 'previous_week_commencing_date',
-                                 'perc_gross_sales_growth', 'perc_unit_sales_growth']
-        self.merge_on_columns = self.default_columns + ['previous_week_commencing_date', 'current_week_commencing_date']
-        self.values_to_merge = self.default_columns + ['prev_gross_sales', 'prev_units_sold',
-                                                       'previous_week_commencing_date', 'current_week_commencing_date']
+        self._data_path = path
+        self._data_frame = None
+        self._column_data_types = None
+        self._data_specific_attributes = None
+        self._default_columns = ['period_id', 'period_name']
+        self._columns_to_drop = self._default_columns + ['gross_sales', 'units_sold', 'prev_gross_sales',
+                                                         'prev_units_sold']
+        self._new_column_order = ['current_week_commencing_date', 'previous_week_commencing_date',
+                                  'perc_gross_sales_growth', 'perc_unit_sales_growth']
+        self._merge_on_columns = self._default_columns + ['previous_week_commencing_date',
+                                                          'current_week_commencing_date']
+        self._values_to_merge = self._default_columns + ['prev_gross_sales', 'prev_units_sold',
+                                                         'previous_week_commencing_date', 'current_week_commencing_date']
 
 
     def _load_data(self):
-        self.data_frame = pd.read_csv(self.data_path, parse_dates=['week_commencing_date'], dayfirst=True)
+        self.data_frame = pd.read_csv(self._data_path, parse_dates=['week_commencing_date'], dayfirst=True)
 
     def _merge_data(self):
         df_previous = self.data_frame[self.data_frame['period_name'] == 'previous']
@@ -48,9 +50,9 @@ class DataProcessor:
             years=1)
         df_previous['period_name'] = 'current'
         df_previous['period_id'] = 2
-        self.data_frame.merge(df_previous[self.values_to_merge], how='outer', on=self.merge_on_columns)
+        self.data_frame.merge(df_previous[self._values_to_merge], how='outer', on=self._merge_on_columns)
         self.data_frame.fillna(0)
-        self.data_frame.astype(self.column_data_types)
+        self.data_frame.astype(self._column_data_types)
         self.data_frame = self.data_frame[self.data_frame['period_name'] == 'current']
 
     def _calc_growth(self) -> None:
@@ -71,29 +73,13 @@ class DataProcessor:
         pass
 
     def _reorder_columns(self) -> None:
-        self.data_frame.reindex(columns=self.new_column_order)
+        self.data_frame.reindex(columns=self._new_column_order)
 
     def _sort_rows(self):
         pass
 
     def _df_to_dict(self):
         self.dict = self.data_frame.to_dict(orient='records')
-
-
-    def df_to_json(self, product: pd.DataFrame, brand: pd.DataFrame) -> None:
-        """
-        Converts product and brand DataFrames to JSON and writes to a file in the output directory.
-
-        Parameters:
-            product (pd.DataFrame): The processed product data.
-            brand (pd.DataFrame): The processed brand data.
-        """
-
-        dict_product = product.sort_values(['product_name', 'current_week_commencing_date']).to_dict(orient='records')
-        dict_brand = brand.sort_values(['brand_name', 'current_week_commencing_date']).to_dict(orient='records')
-        dict_combined = {'PRODUCT': dict_product, 'BRAND': dict_brand}
-        with open('C:/Users/goldi/backend-coding-challenge/output/results.json', 'w') as results_json:
-            simplejson.dump(dict_combined, results_json, indent=4, ignore_nan=True)
 
     def _convert_date_to_string(self, column_name: list) -> None:
         """
