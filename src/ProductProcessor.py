@@ -1,4 +1,4 @@
-from DataProcessor import *
+from src.DataProcessor import *
 from collections import defaultdict
 
 

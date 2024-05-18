@@ -1,16 +1,6 @@
-from DataProcessor import *
-from BrandProcessor import *
-from ProductProcessor import *
+from src.BrandProcessor import *
+from src.ProductProcessor import *
 import simplejson
-
-
-
-
-
-
-
-
-
 
 
 def merge_dict(dict_p: dict, dict_b: dict) -> dict:
