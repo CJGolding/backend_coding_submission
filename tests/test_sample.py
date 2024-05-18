@@ -55,7 +55,7 @@ def test_convert_date_to_string(data_processors):
 
 def test_calc_growth(data_processors):
     """
-    Test the _calc_growth method to ensure it correctly calculates the growth metrics.
+    Test the _calc_growth method to ensure it correctly calculates the growth metrics, producing 2 additional columns.
 
     Args:
         data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
@@ -73,7 +73,7 @@ def test_calc_growth(data_processors):
 
 def test_drop_columns_and_reorder(data_processors):
     """
-    Test the _drop_columns_and_reorder method to ensure it correctly drops and reorders columns.
+    Test the _drop_columns and reorder_columns methods to ensure the dataframe is in the specified format
 
     Args:
         data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
