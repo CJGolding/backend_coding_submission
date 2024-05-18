@@ -23,6 +23,7 @@ class DataProcessor:
         self._data_frame = None
         self._column_data_types = None
         self._data_specific_attributes = None
+        self._df_previous = None
         self._default_columns = ['period_id', 'period_name']
         self._columns_to_drop = self._default_columns + ['gross_sales', 'units_sold', 'prev_gross_sales',
                                                          'prev_units_sold']
@@ -35,25 +36,26 @@ class DataProcessor:
 
 
     def _load_data(self):
-        self.data_frame = pd.read_csv(self._data_path, parse_dates=['week_commencing_date'], dayfirst=True)
+        self._data_frame = pd.read_csv(self._data_path, parse_dates=['week_commencing_date'], dayfirst=True)
 
     def _merge_data(self):
-        df_previous = self.data_frame[self.data_frame['period_name'] == 'previous']
-        self.data_frame['previous_week_commencing_date'] = self.data_frame['week_commencing_date'] - pd.DateOffset(
-            years=1)
-        self.data_frame.rename(columns={'week_commencing_date': 'current_week_commencing_date'})
-        df_previous = df_previous.rename(columns={'week_commencing_date': 'previous_week_commencing_date',
-                                                  'gross_sales': 'prev_gross_sales',
-                                                  'units_sold': 'prev_units_sold'})
 
-        df_previous['current_week_commencing_date'] = df_previous['previous_week_commencing_date'] + pd.DateOffset(
+        self._df_previous = self._data_frame[self._data_frame['period_name'] == 'previous']
+        self._data_frame['previous_week_commencing_date'] = self._data_frame['week_commencing_date'] - pd.DateOffset(
             years=1)
-        df_previous['period_name'] = 'current'
-        df_previous['period_id'] = 2
-        self.data_frame.merge(df_previous[self._values_to_merge], how='outer', on=self._merge_on_columns)
-        self.data_frame.fillna(0)
-        self.data_frame.astype(self._column_data_types)
-        self.data_frame = self.data_frame[self.data_frame['period_name'] == 'current']
+        self._data_frame = self._data_frame.rename(columns={'week_commencing_date': 'current_week_commencing_date'})
+        self._df_previous = self._df_previous.rename(columns={'week_commencing_date': 'previous_week_commencing_date',
+                                    'gross_sales': 'prev_gross_sales', 'units_sold': 'prev_units_sold'})
+
+        self._df_previous['current_week_commencing_date'] = self._df_previous['previous_week_commencing_date'] + pd.DateOffset(
+            years=1)
+        self._df_previous['period_name'] = 'current'
+        self._df_previous['period_id'] = 2
+        self._data_frame = pd.merge(self._data_frame, self._df_previous[self._values_to_merge], how='outer',
+                                    on=self._merge_on_columns)
+        self._data_frame = self._data_frame.fillna(0)
+        self._data_frame = self._data_frame.astype(self._column_data_types)
+        self._data_frame = self._data_frame[self._data_frame['period_name'] == 'current']
 
     def _calc_growth(self) -> None:
         """
@@ -65,21 +67,18 @@ class DataProcessor:
         Returns:
             pd.DataFrame: The DataFrame with growth metrics added.
         """
-        self.data_frame['perc_gross_sales_growth'] = np.where(self.data_frame['prev_gross_sales'] > 0, np.round(((self.data_frame['gross_sales'] - self.data_frame['prev_gross_sales']) / self.data_frame['prev_gross_sales']) * 100, 2), None)
-        self.data_frame['perc_unit_sales_growth'] = np.where(self.data_frame['prev_units_sold'] > 0, np.round(((self.data_frame['units_sold'] - self.data_frame['prev_units_sold']) / self.data_frame['prev_units_sold']) * 100, 2), None)
+        self._data_frame['perc_gross_sales_growth'] = np.where(self._data_frame['prev_gross_sales'] > 0, np.round(((self._data_frame['gross_sales'] - self._data_frame['prev_gross_sales']) / self._data_frame['prev_gross_sales']) * 100, 2), None)
+        self._data_frame['perc_unit_sales_growth'] = np.where(self._data_frame['prev_units_sold'] > 0, np.round(((self._data_frame['units_sold'] - self._data_frame['prev_units_sold']) / self._data_frame['prev_units_sold']) * 100, 2), None)
 
     @staticmethod
     def prepare_dataframe(path):
         pass
 
     def _reorder_columns(self) -> None:
-        self.data_frame.reindex(columns=self._new_column_order)
+        self._data_frame.reindex(columns=self._new_column_order)
 
     def _sort_rows(self):
         pass
-
-    def _df_to_dict(self):
-        self.dict = self.data_frame.to_dict(orient='records')
 
     def _convert_date_to_string(self, column_name: list) -> None:
         """
@@ -94,7 +93,7 @@ class DataProcessor:
             pd.DataFrame: The DataFrame with date columns converted to string format.
         """
         for each in column_name:
-            self.data_frame[each] = self.data_frame[each].dt.strftime('%d/%m/%Y')
+            self._data_frame[each] = self._data_frame[each].dt.strftime('%d/%m/%Y')
 
     def _drop_columns(self) -> None:
         """
@@ -108,29 +107,29 @@ class DataProcessor:
         Returns:
             pd.DataFrame: The DataFrame with columns dropped and reordered.
         """
-        self.data_frame.drop(self.columns_to_drop, axis=1)
+        self._data_frame.drop(self._columns_to_drop, axis=1)
 
     def _return_dict(self):
-        return self.data_frame.to_dict(orient='records')
+        return self._data_frame.to_dict(orient='records')
 
 class BrandProcessor(DataProcessor):
 
     def __init__(self, path):
         super().__init__(path)
-        self.data_specific_attributes = ['brand_id', 'brand']
-        self.new_column_order = self.data_specific_attributes + self.new_column_order
-        self.column_data_types = defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
+        self._data_specific_attributes = ['brand_id', 'brand']
+        self._new_column_order = self._data_specific_attributes + self._new_column_order
+        self._column_data_types = defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
                                              units_sold=np.int32, brand_id=np.int32, prev_gross_sales=np.float64,
                                              prev_units_sold=np.int32)
-        self.merge_on_columns += self.data_specific_attributes
-        self.values_to_merge += self.data_specific_attributes
+        self._merge_on_columns += self._data_specific_attributes
+        self._values_to_merge += self._data_specific_attributes
 
     def _reorder_columns(self) -> None:
-        self.data_frame.reindex(columns=self.new_column_order)
-        self.data_frame.rename(columns={'brand': 'brand_name'})
+        self._data_frame.reindex(columns=self._new_column_order)
+        self._data_frame.rename(columns={'brand': 'brand_name'})
 
     def _sort_rows(self):
-        self.data_frame.sort_values(['brand_name', 'current_week_commencing_date'])
+        self._data_frame.sort_values(['brand_name', 'current_week_commencing_date'])
 
 
     @staticmethod
@@ -155,19 +154,19 @@ class ProductProcessor(DataProcessor):
 
     def __init__(self, path):
         super().__init__(path)
-        self.data_specific_attributes = ['barcode_no', 'product_name']
-        self.new_column_order = self.data_specific_attributes + self.new_column_order
-        self.column_data_types = defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
-                                             units_sold=np.int32, brand_id=np.int32, prev_gross_sales=np.float64,
-                                             prev_units_sold=np.int32)
-        self.merge_on_columns += self.data_specific_attributes
-        self.values_to_merge += self.data_specific_attributes
+        self._data_specific_attributes = ['barcode_no', 'product_name']
+        self._new_column_order = self._data_specific_attributes + self._new_column_order
+        self._column_data_types = defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
+                                             units_sold=np.int32, prev_gross_sales=np.float64,
+                                             prev_units_sold=np.int32, barcode_no=str)
+        self._merge_on_columns += self._data_specific_attributes
+        self._values_to_merge += self._data_specific_attributes
 
     def _reorder_columns(self) -> None:
-        self.data_frame.reindex(columns=self.new_column_order)
+        self._data_frame.reindex(columns=self._new_column_order)
 
     def _sort_rows(self):
-        self.data_frame.sort_values(['product_name', 'current_week_commencing_date'])
+        self._data_frame.sort_values(['product_name', 'current_week_commencing_date'])
 
     @staticmethod
     def prepare_dataframe(path) -> dict:
