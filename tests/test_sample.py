@@ -1,13 +1,10 @@
+
 import sys
 import os
 import pytest
-import pandas as pd
-import numpy as np
-from collections import defaultdict
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from src.main import DataProcessor, run
+from src.main import *
 
 # Paths for test data files
 product_test_path = 'data/sales_product.csv'
@@ -16,112 +13,97 @@ output_path = 'output/results.json'
 
 
 @pytest.fixture
-def data_processor():
+def data_processors() -> tuple[ProductProcessor, BrandProcessor]:
     """
     Fixture to create a DataProcessor instance with appropriate CSV file paths.
 
     Returns:
-        DataProcessor: An instance of the DataProcessor class.
+        tuple[ProductProcessor, BrandProcessor]: A tuple of instances for ProductProcessor and BrandProcessor classes.
     """
-    return DataProcessor(product_test_path, brand_test_path)
+    return ProductProcessor(product_test_path), BrandProcessor(brand_test_path)
 
 
-def test_df_to_json(data_processor):
+def test_merge_data(data_processors):
     """
-    Test the df_to_json method to ensure it converts dataframes to JSON and writes to a file.
+    Test the _merge_data method to ensure it correctly merges previous and current data periods with additional columns.
 
     Args:
-        data_processor (DataProcessor): Fixture for DataProcessor instance.
+        data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
+        BrandProcessor classes.
     """
-    product_df = pd.read_csv(product_test_path, parse_dates=['week_commencing_date'], dayfirst=True)
-    brand_df = pd.read_csv(brand_test_path, parse_dates=['week_commencing_date'], dayfirst=True)
-    product_df, brand_df = data_processor.process_data()
-
-    data_processor.df_to_json(product_df, brand_df)
-
-    assert os.path.exists(output_path)
-
-    with open(output_path, 'r') as f:
-        content = f.read()
-        assert '"PRODUCT"' in content
-        assert '"BRAND"' in content
+    product_test_processor = data_processors[0]
+    product_test_processor._merge_data()
+    assert 'previous_week_commencing_date' in product_test_processor._data_frame.columns
+    assert 'prev_gross_sales' in product_test_processor._data_frame.columns
+    assert (product_test_processor._data_frame['period_name'] == 'current').all()
 
 
-def test_convert_date_to_string(data_processor):
+def test_convert_date_to_string(data_processors):
     """
-    Test the _convert_date_to_string method to ensure it correctly converts date columns to string format.
+    Test the _convert_date_to_string method to ensure it correctly converts date columns to string format, by checking
+    both before and after running the method.
 
     Args:
-        data_processor (DataProcessor): Fixture for DataProcessor instance.
+        data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
+        BrandProcessor classes.
     """
-    df = pd.read_csv(product_test_path, parse_dates=['week_commencing_date'], dayfirst=True)
-    df = data_processor._convert_date_to_string(df, 'week_commencing_date')
-    assert df['week_commencing_date'].iloc[0] == '04/07/2021'
+    product_test_processor = data_processors[0]
+    assert product_test_processor._data_frame['week_commencing_date'].dtype == 'datetime64[ns]'
+    product_test_processor._convert_date_to_string(['week_commencing_date'])
+    assert product_test_processor._data_frame['week_commencing_date'].dtype == 'object'
 
 
-def test_prepare_data(data_processor):
-    """
-    Test the _prepare_data method to ensure it correctly processes and prepares the data.
-
-    Args:
-        data_processor (DataProcessor): Fixture for DataProcessor instance.
-    """
-    df = data_processor._prepare_data(product_test_path, ['barcode_no', 'product_name'],
-                                      defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
-                                                  units_sold=np.int32, prev_gross_sales=np.float64,
-                                                  prev_units_sold=np.int32, barcode_no=str))
-    assert 'previous_week_commencing_date' in df.columns
-    assert 'prev_gross_sales' in df.columns
-    assert (df['period_name'] == 'current').all()
-
-
-def test_calc_growth(data_processor):
+def test_calc_growth(data_processors):
     """
     Test the _calc_growth method to ensure it correctly calculates the growth metrics.
 
     Args:
-        data_processor (DataProcessor): Fixture for DataProcessor instance.
+        data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
+        BrandProcessor classes.
     """
-    df = data_processor._prepare_data(product_test_path, ['barcode_no', 'product_name'],
-                                      defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
-                                                  units_sold=np.int32, prev_gross_sales=np.float64,
-                                                  prev_units_sold=np.int32, barcode_no=str))
-    df = data_processor._calc_growth(df)
-    assert 'perc_gross_sales_growth' in df.columns
-    assert 'perc_unit_sales_growth' in df.columns
-    assert df['perc_gross_sales_growth'].iloc[0] == pytest.approx(108.81)
-    assert df['perc_unit_sales_growth'].iloc[0] == pytest.approx(123.08)
+    product_test_processor = data_processors[0]
+    product_test_processor._merge_data()
+    product_test_processor._calc_growth()
+    product_test_processor._sort_rows()
+    assert 'perc_gross_sales_growth' in product_test_processor._data_frame.columns
+    assert 'perc_unit_sales_growth' in product_test_processor._data_frame.columns
+    assert product_test_processor._data_frame['perc_gross_sales_growth'].iloc[0] == pytest.approx(19.93)
+    assert product_test_processor._data_frame['perc_unit_sales_growth'].iloc[0] == pytest.approx(52.63)
 
 
-def test_drop_columns_and_reorder(data_processor):
+def test_drop_columns_and_reorder(data_processors):
     """
     Test the _drop_columns_and_reorder method to ensure it correctly drops and reorders columns.
 
     Args:
-        data_processor (DataProcessor): Fixture for DataProcessor instance.
+        data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
+        BrandProcessor classes.
     """
-    df = data_processor._prepare_data(product_test_path, ['barcode_no', 'product_name'],
-                                      defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
-                                                  units_sold=np.int32, prev_gross_sales=np.float64,
-                                                  prev_units_sold=np.int32, barcode_no=str))
-    df = data_processor._calc_growth(df)
-    df = data_processor._drop_columns_and_reorder(df, ['barcode_no', 'product_name'])
-    assert set(df.columns) == {'barcode_no', 'product_name', 'current_week_commencing_date',
-                               'previous_week_commencing_date', 'perc_gross_sales_growth',
-                               'perc_unit_sales_growth'}
+    product_test_processor = data_processors[0]
+    product_test_processor._merge_data()
+    product_test_processor._calc_growth()
+    product_test_processor._drop_columns()
+    product_test_processor._reorder_columns()
+    product_test_processor._sort_rows()
+
+    assert set(product_test_processor._data_frame.columns) == {'barcode_no', 'product_name',
+                                                               'current_week_commencing_date',
+                                                               'previous_week_commencing_date',
+                                                               'perc_gross_sales_growth', 'perc_unit_sales_growth'}
 
 
-def test_column_datatypes(data_processor):
+def test_column_datatypes(data_processors):
     """
     Test to check if the DataFrame columns are the correct datatype.
 
     Args:
-        data_processor (DataProcessor): Fixture for DataProcessor instance.
+        data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
+        BrandProcessor classes.
     """
-    df = data_processor._prepare_data(product_test_path, ['barcode_no', 'product_name'],
-                                      defaultdict(lambda: object, period_id=np.int32, gross_sales=np.float64,
-                                                  units_sold=np.int32, prev_gross_sales=np.float64,
-                                                  prev_units_sold=np.int32, barcode_no=str))
+    product_test_processor = data_processors[0]
+    product_test_processor._merge_data()
+    product_test_processor._calc_growth()
+
     expected_dtypes = {
         'barcode_no': 'object',
         'product_name': 'object',
@@ -135,11 +117,35 @@ def test_column_datatypes(data_processor):
         'period_name': 'object'
     }
 
-    actual_dtypes = df.dtypes.to_dict()
+    actual_dtypes = product_test_processor._data_frame.dtypes.to_dict()
 
     for column, dtype in expected_dtypes.items():
         assert actual_dtypes[
                    column] == dtype, f"Column {column} has incorrect datatype {actual_dtypes[column]}, expected {dtype}"
+
+
+def test_merge_and_dict_to_json(data_processors: tuple[ProductProcessor, BrandProcessor]) -> None:
+    """
+    Test the merge_dict and dict_to_json methods to ensure the two dictionaries are merged, converted to JSON and
+    written to a file in the correct structure.
+
+    Args:
+        data_processors (tuple[ProductProcessor, BrandProcessor]): A tuple of instances for ProductProcessor and
+        BrandProcessor classes.
+    """
+    product_processor = data_processors[0]
+    brand_processor = data_processors[1]
+    product_test_df = product_processor.prepare_dataframe()
+    brand_test_df = brand_processor.prepare_dataframe()
+    merged_data = merge_dict(product_test_df, brand_test_df)
+    dict_to_json(merged_data, output_path)
+
+    assert os.path.exists(output_path)
+
+    with open(output_path, 'r') as f:
+        content = f.read()
+        assert '"PRODUCT"' in content
+        assert '"BRAND"' in content
 
 
 def test_run():
@@ -149,7 +155,7 @@ def test_run():
     # Ensure output directory exists
     os.makedirs('output', exist_ok=True)
 
-    run(product_test_path, brand_test_path)
+    run(product_test_path, brand_test_path, output_path)
 
     # Check if output file is created
     assert os.path.exists(output_path)
